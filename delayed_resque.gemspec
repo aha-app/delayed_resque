@@ -15,9 +15,9 @@ Gem::Specification.new do |s|
   s.require_paths = ["lib"]
   s.test_files = Dir.glob('spec/**/*')
 
-  s.add_dependency 'rails', '>= 4.0.0'
+  s.add_dependency 'rails', '~> 6.1'
   s.add_dependency 'resque'
   s.add_dependency 'resque-scheduler'
-  
+
   s.add_development_dependency "rspec"
 end
