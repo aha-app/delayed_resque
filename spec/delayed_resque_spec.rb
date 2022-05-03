@@ -19,7 +19,7 @@ describe DelayedResque do
     end
 
     it "delayed method is called" do
-      DummyObject.stub(:second_method).with(123, 456)
+      allow(DummyObject).to receive(:second_method).with(123, 456)
       with_resque do
         DummyObject.delay.second_method(123, 456)
       end
@@ -122,7 +122,7 @@ describe DelayedResque do
 
     before do
       uuids
-      SecureRandom.stub(:uuid).and_return(*uuids)
+      allow(SecureRandom).to receive(:uuid).and_return(*uuids)
     end
 
     it 'enqueues non-scheduled unique jobs, keeping track of the last' do

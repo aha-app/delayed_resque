@@ -19,7 +19,7 @@ RSpec.describe DelayedResque::UniqueJobs do
 
   before do
     uuids
-    SecureRandom.stub(:uuid).and_return(*uuids)
+    allow(SecureRandom).to receive(:uuid).and_return(*uuids)
   end
 
   let(:performable_class) do

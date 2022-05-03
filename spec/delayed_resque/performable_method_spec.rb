@@ -37,7 +37,7 @@ RSpec.describe DelayedResque::PerformableMethod do
 
   before do
     uuids
-    SecureRandom.stub(:uuid).and_return(*uuids)
+    allow(SecureRandom).to receive(:uuid).and_return(*uuids)
   end
 
   describe '#queue' do
@@ -146,7 +146,7 @@ RSpec.describe DelayedResque::PerformableMethod do
       let(:additional_job_options) { { 't' => Time.now.to_f } }
 
       it 'executes the method' do
-        DummyObject.should_receive(:do_something).with(*method_args).once
+        allow(DummyObject).to receive(:do_something).with(*method_args).once
         perform
       end
     end
@@ -170,7 +170,7 @@ RSpec.describe DelayedResque::PerformableMethod do
           let(:tracked_uuid) { uuid }
 
           it 'executes the method' do
-            DummyObject.should_receive(:do_something).with(*method_args).once
+            allow(DummyObject).to receive(:do_something).with(*method_args).once
             perform
           end
 
@@ -183,7 +183,7 @@ RSpec.describe DelayedResque::PerformableMethod do
           let(:tracked_uuid) { other_uuid }
 
           it 'does not execute the method' do
-            DummyObject.should_not_receive(:do_something)
+            expect(DummyObject).to_not receive(:do_something)
             perform
           end
 
@@ -198,7 +198,7 @@ RSpec.describe DelayedResque::PerformableMethod do
         # we can assume that *somehow* the unique job that was being tracked was already
         # processed and therefore this should be a no-op
         it 'does not execute the method' do
-          DummyObject.should_not_receive(:do_something)
+          expect(DummyObject).to_not receive(:do_something)
           perform
         end
       end

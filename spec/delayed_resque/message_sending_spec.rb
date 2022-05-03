@@ -67,7 +67,7 @@ RSpec.describe DelayedResque::MessageSending do
 
       before do
         uuids
-        SecureRandom.stub(:uuid).and_return(*uuids)
+        allow(SecureRandom).to receive(:uuid).and_return(*uuids)
       end
 
       context 'when it is the first occurrence' do
