@@ -1,4 +1,5 @@
 require 'spec_helper'
+require 'pry'
 
 RSpec.describe DelayedResque::PerformableMethod do
   include PerformJob
@@ -11,12 +12,27 @@ RSpec.describe DelayedResque::PerformableMethod do
     end
   end
 
+  class DummyModel < ActiveRecord::Base
+    def self.do_something(*args)
+    end
+
+    def do_something
+    end
+  end
+
+  class DummyModelChild < DummyModel
+  end
+
+  # Test will use becomes to convert model into this type of class
+  class NotARealDummyModelChild < DummyModelChild
+  end
+
   around do |ex|
     travel_to(Time.current) { ex.run }
   end
 
   let(:redis) { Resque.redis }
-  let(:object) { 'CLASS:DummyObject' }
+  let(:object) { DummyObject }
   let(:method) { :do_something }
   let(:method_args) { [123] }
   let(:base_job_options) do
@@ -29,27 +45,20 @@ RSpec.describe DelayedResque::PerformableMethod do
   let(:encoded_job_key) { Digest::SHA256.hexdigest(Resque.encode(base_job_options)) }
   let(:additional_job_options) { {} }
   let(:options) { base_job_options.merge(additional_job_options) }
-  let(:performable_class) { DummyObject }
   let(:performable) do
-    described_class.new(performable_class, method, additional_job_options, method_args)
+    described_class.new(object, method, additional_job_options, method_args)
   end
   let(:uuids) { Array.new(10) { SecureRandom.uuid } }
 
   before do
     uuids
-    SecureRandom.stub(:uuid).and_return(*uuids)
+    allow(SecureRandom).to receive(:uuid).and_return(*uuids)
   end
 
   describe '#queue' do
     subject(:queue) { performable.queue }
 
     context 'when there is no queue defined' do
-      let(:performable_class) do
-        Class.new do
-          def self.do_something; end
-        end
-      end
-
       it 'uses the default queue' do
         expect(queue).to eq('default')
       end
@@ -68,7 +77,7 @@ RSpec.describe DelayedResque::PerformableMethod do
     subject(:store) { performable.store }
 
     it 'has the correct obj' do
-      expect(store).to include('obj' => object)
+      expect(store).to include('obj' => 'CLASS:DummyObject')
     end
 
     it 'has the correct method' do
@@ -85,6 +94,46 @@ RSpec.describe DelayedResque::PerformableMethod do
 
     it 'does not include a unique job id' do
       expect(store).to_not have_key(described_class::UNIQUE_JOB_ID)
+    end
+
+    context 'when object is an AR class' do
+      let(:object) { DummyModel }
+
+      it 'has the correct obj' do
+        expect(store).to include('obj' => 'CLASS:DummyModel')
+      end
+    end
+
+    context 'when object is an AR child STI class' do
+      let(:object) { DummyModelChild }
+
+      it 'has the correct obj' do
+        expect(store).to include('obj' => 'CLASS:DummyModelChild')
+      end
+    end
+
+    context 'when object is an AR instance' do
+      let(:object) { DummyModel.new(id: 123) }
+
+      it 'has the correct obj' do
+        expect(store).to include('obj' => 'AR:DummyModel:123')
+      end
+    end
+
+    context 'when object is an AR child class instance' do
+      let(:object) { DummyModelChild.new(id: 456) }
+
+      it 'has the correct obj' do
+        expect(store).to include('obj' => 'AR:DummyModel:456')
+      end
+    end
+
+    context 'when object is an AR instance created via becomes' do
+      let(:object) { DummyModelChild.new(id: 789).becomes(NotARealDummyModelChild) }
+
+      it 'has the correct obj' do
+        expect(store).to include('obj' => 'AR:DummyModel:789')
+      end
     end
 
     context 'when job options include params' do
@@ -146,7 +195,7 @@ RSpec.describe DelayedResque::PerformableMethod do
       let(:additional_job_options) { { 't' => Time.now.to_f } }
 
       it 'executes the method' do
-        DummyObject.should_receive(:do_something).with(*method_args).once
+        allow(DummyObject).to receive(:do_something).with(*method_args).once
         perform
       end
     end
@@ -170,7 +219,7 @@ RSpec.describe DelayedResque::PerformableMethod do
           let(:tracked_uuid) { uuid }
 
           it 'executes the method' do
-            DummyObject.should_receive(:do_something).with(*method_args).once
+            allow(DummyObject).to receive(:do_something).with(*method_args).once
             perform
           end
 
@@ -183,7 +232,7 @@ RSpec.describe DelayedResque::PerformableMethod do
           let(:tracked_uuid) { other_uuid }
 
           it 'does not execute the method' do
-            DummyObject.should_not_receive(:do_something)
+            expect(DummyObject).to_not receive(:do_something)
             perform
           end
 
@@ -198,7 +247,7 @@ RSpec.describe DelayedResque::PerformableMethod do
         # we can assume that *somehow* the unique job that was being tracked was already
         # processed and therefore this should be a no-op
         it 'does not execute the method' do
-          DummyObject.should_not_receive(:do_something)
+          expect(DummyObject).to_not receive(:do_something)
           perform
         end
       end
