@@ -58,7 +58,7 @@ module DelayedResque
       method = options["method"]
       args = options["args"]
       arg_objects = []
-      loaded_object = 
+      loaded_object =
         begin
           arg_objects = args.map{|a| self.load(a)}
           self.load(object)
@@ -100,7 +100,7 @@ module DelayedResque
     end
 
     def ar_to_string(obj)
-      "AR:#{obj.class}:#{obj.id}"
+      "AR:#{obj.class.base_class.name}:#{obj.id}"
     end
 
     def class_to_string(obj)
